@@ -12,8 +12,10 @@ from custom_rect import CustomRect
 class ShapeNode():
     def __init__(self, shape: CustomRect) -> None:
         self.shape = shape
+        self.dimension: int = 0
         self.left: ShapeNode = None
         self.right: ShapeNode = None
+        self.parent: ShapeNode = None
 
     # TODO: This equality check is costly - it goes through all tree. Should think on optimization
     def __eq__(self, __value: object) -> bool:
@@ -27,26 +29,40 @@ class ShapeNodesCollection():
     def __init__(self) -> None:
         self._root: ShapeNode = None
 
-    def addNode(self, shape: CustomRect) -> None:
+    @property
+    def root(self) -> ShapeNode:
+        return self._root
+
+    def addShape(self, shape: CustomRect, dimensionStart: int = 0) -> None:
         if self._root == None:
             self._root = ShapeNode(shape)
         else:
-            self.__addNodeInternal(self._root, ShapeNode(shape), 0)
+            self.__addNodeInternal(self._root, ShapeNode(shape), dimensionStart)
 
-    def __addNodeInternal(self, root: ShapeNode, node: ShapeNode, depth: int) -> ShapeNode:
-        if not root:
-            return node
+    def __addNodeInternal(self, root: ShapeNode, node: ShapeNode, depth: int) -> None:
 
         currentDimension = depth % 2
 
         if (ShapeNodesCollection.getCoordsDimension(node.shape.centerPoint, currentDimension) < ShapeNodesCollection.getCoordsDimension(root.shape.centerPoint, currentDimension)):
-            root.left = self.__addNodeInternal(root.left, node, depth + 1)
+            if not root.left:
+                node.parent = root
+                node.dimension = (depth + 1) % 2
+                root.left = node
+                return
+            else:
+                self.__addNodeInternal(root.left, node, depth + 1)
         else:
-            root.right = self.__addNodeInternal(root.right, node, depth + 1)
+            if not root.right:
+                node.parent = root
+                node.dimension = (depth + 1) % 2
+                root.right = node
+                return
+            else:
+                root.right = self.__addNodeInternal(root.right, node, depth + 1)
 
         return root
     
-    def searchNearestNode(self, point: QPoint) -> CustomRect:
+    def searchNearestShape(self, point: QPoint) -> CustomRect:
         result = self.__searchNearestNodeInternal(self._root, point, 0)
 
         if result:
@@ -91,6 +107,15 @@ class ShapeNodesCollection():
     def getShapeAtPoint(self, point: QPoint) -> CustomRect:
         return self.__searchNode(ShapeNode(point))
 
+    def deleteShape(self, shape: CustomRect) -> None:
+        nodeToDelete = self.__searchNode(self._root, ShapeNode(shape), 0)
+
+        if nodeToDelete:
+            print(f"Found node: {nodeToDelete.shape.centerPoint.x()}, {nodeToDelete.shape.centerPoint.y()}")
+            # self.__deleteNodeInternal(nodeToDelete.parent, nodeToDelete)
+        else:
+            print("No nodes found")
+
     def __searchNode(self, root: ShapeNode, node: ShapeNode, depth: int) -> ShapeNode:
         if not root:
             return None
@@ -98,12 +123,47 @@ class ShapeNodesCollection():
         if root.shape == node.shape:
             return root
         
-        currentDepth = depth % 2
+        currentDimension = depth % 2
 
-        if node.getCoordinateInDimension(currentDepth) < root.getCoordinateInDimension(currentDepth):
+        if ShapeNodesCollection.getCoordsDimension(node.shape.centerPoint, currentDimension) < ShapeNodesCollection.getCoordsDimension(root.shape.centerPoint, currentDimension):
             return self.__searchNode(root.left, node, depth + 1)
         
         return self.__searchNode(root.right, node, depth + 1)
+
+    def __deleteNodeInternal(self, root: ShapeNode, node: ShapeNode) -> None:
+        print("Starting deletion")
+        startingDim = root.dimension
+
+        subnodesList = []
+
+        print(f"Node left: {node.left}")
+        print(f"Node right: {node.right}")
+
+        # self.__addNodeToList(node.left, subnodesList)
+        # self.__addNodeToList(node.right, subnodesList)
+
+        print(f"Subnodes collection size: {len(subnodesList)}")
+
+        newCollection = ShapeNodesCollection()
+
+        for node in subnodesList:
+            newCollection.addShape(node.shape, startingDim)
+
+        print(f"Deleted node dim: {node.dimension}")
+        print(f"New subtree start dim: {newCollection.root.dimension}")
+
+    def __addNodeToList(self, node: ShapeNode, nodeList: List[ShapeNode]) -> None:
+        if not node:
+            return
+
+        if node.left:
+            self.__addNodeToList(node.left, nodeList)
+        
+        if node.right:
+            self.__addNodeToList(node.right, nodeList)
+
+        nodeList.append(node)
+
 
     @staticmethod
     def __closestNode(targetPoint: QPoint, node_1: ShapeNode, node_2: ShapeNode) -> ShapeNode:

@@ -32,3 +32,8 @@ class CustomRect(QRect):
         # Check for negative numbers?
 
         return QPoint(min_x, min_y)
+    
+    def setNewCenterPoint(self, dx: int, dy: int) -> None:
+        self._centerPoint.setX(self._centerPoint.x() + dx)
+        self._centerPoint.setY(self._centerPoint.y() + dy)
+        self.moveCenter(self._centerPoint)
