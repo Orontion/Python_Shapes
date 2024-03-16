@@ -8,11 +8,13 @@ from PyQt5.QtCore import Qt, QRect, QSize
 
 import constants
 from custom_rect import CustomRect
+from positioning_helper import ShapeNode, ShapeNodesCollection
 
 class DrawArea(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget = None, flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags()) -> None:
         super().__init__(parent, flags)
 
+        self._shapeNodesCollection = ShapeNodesCollection()
         self.setLayout(QtWidgets.QBoxLayout(QtWidgets.QBoxLayout.Direction.LeftToRight, None))
 
         self._rects: List[CustomRect] = []
@@ -53,6 +55,10 @@ class DrawArea(QtWidgets.QWidget):
 
         if self.areaBorderCheck(new_shape):
             self._rects.append(new_shape)
+            result = self._shapeNodesCollection.searchNearestNode(new_shape)
+            if result:
+                print(f"Closest shape center point coordinates: x{result.centerPoint.x()}, y{result.centerPoint.y()}")
+            self._shapeNodesCollection.addNode(new_shape)
             self.update()
         else:
             print(f"Shape is out of bounds:")
