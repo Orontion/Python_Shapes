@@ -47,19 +47,31 @@ class DrawArea(QtWidgets.QWidget):
 
     # Double click
     def mouseDoubleClickEvent(self, a0: QMouseEvent | None) -> None:
+        print(f"Double click catched")
         current_point = a0.localPos().toPoint()
 
+        # TODO: Move shape generation to separate method
         new_shape = CustomRect(current_point,
                                QSize(constants.RECT_SIZE_X, constants.RECT_SIZE_Y),
                                Qt.GlobalColor.blue)
 
+
+        # TODO: Move shape check to other place
         if self.areaBorderCheck(new_shape):
-            self._rects.append(new_shape)
-            result = self._shapeNodesCollection.searchNearestNode(new_shape)
+            result = self._shapeNodesCollection.searchNearestNode(new_shape.centerPoint)
+
             if result:
                 print(f"Closest shape center point coordinates: x{result.centerPoint.x()}, y{result.centerPoint.y()}")
-            self._shapeNodesCollection.addNode(new_shape)
-            self.update()
+                if not result.intersects(new_shape):
+                    self._rects.append(new_shape)
+                    self._shapeNodesCollection.addNode(new_shape)
+                    self.update()
+                else:
+                    print(f"New shape intersects with existing one!")
+            else:
+                self._rects.append(new_shape)
+                self._shapeNodesCollection.addNode(new_shape)
+                self.update()
         else:
             print(f"Shape is out of bounds:")
 
@@ -74,6 +86,17 @@ class DrawArea(QtWidgets.QWidget):
             return False
         
         return True
+    
+    def mousePressEvent(self, a0: QMouseEvent | None) -> None:
+        result = self._shapeNodesCollection.searchNearestNode(a0.pos())
+
+        if result:
+            print(f"Closest shape is at coords: {result.centerPoint.x()}, {result.centerPoint.y()}")
+
+            if result.contains(a0.pos()):
+                print(f"Clicked inside of the shape!")
+
+        return super().mousePressEvent(a0)
 
     def mouseReleaseEvent(self, a0: QMouseEvent | None) -> None:
 
