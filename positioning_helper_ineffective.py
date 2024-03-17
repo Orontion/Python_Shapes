@@ -41,7 +41,7 @@ class CollisionProcessor():
         if shape.getTopLeftBound().x() < 0 or shape.getTopLeftBound().y() < 0:
             return False
 
-        if shape.getBottomRightBound().x() > self._drawingWidget.height() or shape.getBottomRightBound().y() > self._drawingWidget.width():
+        if shape.getBottomRightBound().x() > self._drawingWidget.width() or shape.getBottomRightBound().y() > self._drawingWidget.height():
             return False
         
         return True

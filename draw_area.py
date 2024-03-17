@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt, QRect, QSize, QPoint
 
 import constants
 from custom_rect import CustomRect, CustomRectRandomColorFactory
+from custom_shape import CustomShape
 from positioning_helper_ineffective import ShapesCollection, CollisionProcessor
 from shapes_link import ShapesLinkBase, ShapesLinkLine
 
@@ -23,6 +24,7 @@ class DrawArea(QtWidgets.QWidget):
         self._rectToErase: CustomRect = None
         self._lastMousePos: QPoint = None
         self._shapeToLink: CustomRect = None
+        self._lockCursor: bool = False
 
         self._shapeLinksCollection: List[ShapesLinkBase] = []
 
@@ -71,20 +73,23 @@ class DrawArea(QtWidgets.QWidget):
         return super().mouseDoubleClickEvent(a0)
     
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
-        self._lastMousePos = a0.pos()
+        self._lastMousePos = a0.globalPos()
         result = self._shapesCollection.getShapeAtPoint(a0.pos())
 
         if result:
+            self._lockCursor = True
             print(f"MOUSEPRESSEVENT shape coords: {result.centerPoint.x()}, {result.centerPoint.y()}")
 
             match a0.button():
                 case Qt.MouseButton.LeftButton:
                     self._movingShape = result
-                    print("Ready to move")
+        else:
+            self._lockCursor = False
 
         return super().mousePressEvent(a0)
 
     def mouseReleaseEvent(self, a0: QMouseEvent | None) -> None:
+        self._lockCursor = False
         result = self._shapesCollection.getShapeAtPoint(a0.pos())
 
         match a0.button():
@@ -115,46 +120,58 @@ class DrawArea(QtWidgets.QWidget):
         return super().mouseReleaseEvent(a0)
     
     def mouseMoveEvent(self, a0: QMouseEvent | None) -> None:
-        if self._movingShape:
-            if not self._moveStarted:
-                self._shapesCollection.deleteShape(self._movingShape)
-                self._moveStarted = True
-            
-            self._rectToErase = self._movingShape
+        delta_x = a0.globalPos().x() - self._lastMousePos.x()
+        delta_y = a0.globalPos().y() - self._lastMousePos.y()
 
-            # Simple logic for leaving window borders, should be changed on "leaving shape borders"
-            delta_x = 0
-            delta_y = 0
-
-            if not (a0.x() < 0 or a0.x() > self.width()):
-                delta_x = a0.x() - self._lastMousePos.x()
-                
-            if not (a0.y() < 0 or a0.y() > self.height()):
-                delta_y = a0.y() - self._lastMousePos.y()
-
-            self._lastMousePos = a0.pos()
-
-            self._movingShape.setNewCenterPoint(delta_x, delta_y)
-
-            if not self._collisionChecker.completeCollisionCheck(self._movingShape):
-                self._movingShape.setNewCenterPoint(-delta_x, -delta_y)
-
+        if self.processMoveAction(delta_x, delta_y):
+            self._lastMousePos = a0.globalPos()
             self.update()
+        else:
+            self.cursor().setPos(self._lastMousePos)
 
         return super().mouseMoveEvent(a0)
     
     def paintEvent(self, a0: QPaintEvent | None) -> None:
         qp = QPainter(self)
 
+        # Clear painting area
         qp.eraseRect(0, 0, self.width(), self.height())
 
+        # Draw shapes
         for rect in self._shapesCollection.nodesList:
             rect.drawCustomShape(qp)
 
+        # Draw currentrly moving shape separately - it is removed from collection while moving
         if self._movingShape and self._moveStarted:
             self._movingShape.drawCustomShape(qp)
 
+        # Draw links
         for link in self._shapeLinksCollection:
             link.drawLink(qp)
         
         return super().paintEvent(a0)
+    
+    def processMoveAction(self, delta_x: int, delta_y: int) -> bool:
+        if self._movingShape:
+            if not self._moveStarted:
+                self._shapesCollection.deleteShape(self._movingShape)
+                self._moveStarted = True
+
+            new_point = QPoint(self._movingShape.centerPoint.x() + delta_x,
+                               self._movingShape.centerPoint.y() + delta_y)
+
+            return self.tryMoveShape(self._movingShape, new_point)
+        
+        return True
+
+    def tryMoveShape(self, shape: CustomShape, newPoint: QPoint) -> bool:
+        oldPoint = shape.centerPoint
+
+        shape.setNewCenterPoint(newPoint)
+
+        if self._collisionChecker.completeCollisionCheck(shape):
+            return True
+        else:
+            shape.setNewCenterPoint(oldPoint)
+            return False
+        

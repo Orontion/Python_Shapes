@@ -31,9 +31,8 @@ class CustomRect(CustomShape):
 
         return QPoint(min_x, min_y)
     
-    def setNewCenterPoint(self, dx: int, dy: int) -> None:
-        self._centerPoint.setX(self._centerPoint.x() + dx)
-        self._centerPoint.setY(self._centerPoint.y() + dy)
+    def setNewCenterPoint(self, point: QPoint) -> None:
+        self._centerPoint = point
         self._geometryObject.moveCenter(self._centerPoint)
 
     def getLinkPoint(self, shape: CustomShape) -> QPoint:

@@ -28,7 +28,7 @@ class CustomShape(ABC):
         return self._boundaryRect
     
     @abstractmethod
-    def setNewCenterPoint(self, dx: int, dy: int) -> None:
+    def setNewCenterPoint(self, point: QPoint) -> None:
         pass
 
     @abstractmethod
