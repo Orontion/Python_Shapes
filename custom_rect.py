@@ -26,11 +26,9 @@ class CustomRect(QRect):
         return self._color
 
     def calculateAnchorPoint(centerPoint: QPoint, size: QSize) -> QPoint:
+        # TODO: rework calculation, now it leads to incorrect rounding and visual bug
         min_x = centerPoint.x() - size.width() // 2
-
         min_y = centerPoint.y() - size.height() // 2
-
-        # Check for negative numbers?
 
         return QPoint(min_x, min_y)
     
@@ -38,6 +36,49 @@ class CustomRect(QRect):
         self._centerPoint.setX(self._centerPoint.x() + dx)
         self._centerPoint.setY(self._centerPoint.y() + dy)
         self.moveCenter(self._centerPoint)
+
+    def getLinkPoint(self, shape: "CustomRect") -> QPoint:
+        linkPoint = QPoint()
+
+        borderDeltaX = 0
+        borderDeltaY = 0
+
+        if shape.centerPoint.x() > self.centerPoint.x():
+            if shape.bottomLeft().x() > self.bottomRight().x():
+                borderDeltaX = shape.bottomLeft().x() - self.bottomRight().x()
+        else:
+            if shape.bottomRight().x() < self.bottomLeft().x():
+                borderDeltaX = shape.bottomRight().x() - self.bottomLeft().x()
+
+        if shape.centerPoint.y() > self.centerPoint.y():
+            if shape.topRight().y() > self.bottomRight().y():
+                borderDeltaY = shape.topRight().y() - self.bottomRight().y()
+        else:
+            if shape.bottomRight().y() < self.topRight().y():
+                borderDeltaY = shape.bottomRight().y() - self.topRight().y()
+
+        if abs(borderDeltaX) > abs(borderDeltaY):
+            linkPoint.setY(self._centerPoint.y())
+
+            if borderDeltaX > 0:
+                linkPoint.setX(self.bottomRight().x())
+            else:
+                linkPoint.setX(self.bottomLeft().x())
+            
+        else:
+            linkPoint.setX(self._centerPoint.x())
+
+            if borderDeltaY > 0:
+                linkPoint.setY(self.bottomRight().y())
+            else:
+                linkPoint.setY(self.topRight().y())
+
+        return linkPoint
+
+    def drawRect(self, painter: QPainter) -> None:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self.color)
+        painter.drawRect(self)
 
 class CustomRectBaseFactory():
     def __init__(self) -> None:

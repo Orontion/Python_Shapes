@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt, QRect, QSize, QPoint
 import constants
 from custom_rect import CustomRect, CustomRectRandomColorFactory
 from positioning_helper_ineffective import ShapesCollection, CollisionProcessor
+from shapes_link import ShapesLinkBase, ShapesLinkLine
 
 class DrawArea(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget = None, flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags()) -> None:
@@ -21,6 +22,9 @@ class DrawArea(QtWidgets.QWidget):
         self._moveStarted: bool = False
         self._rectToErase: CustomRect = None
         self._lastMousePos: QPoint = None
+        self._shapeToLink: CustomRect = None
+
+        self._shapeLinksCollection: List[ShapesLinkBase] = []
 
         self.setLayout(QtWidgets.QBoxLayout(QtWidgets.QBoxLayout.Direction.LeftToRight, None))
 
@@ -45,18 +49,25 @@ class DrawArea(QtWidgets.QWidget):
 
     # Double click
     def mouseDoubleClickEvent(self, a0: QMouseEvent | None) -> None:
-        print(f"Double click catched")
-        current_point = a0.localPos().toPoint()
+        match a0.button():
+            case Qt.MouseButton.RightButton:
+                result = self._shapesCollection.getShapeAtPoint(a0.pos())
 
-        new_shape = self._customRectFactory.getNewCustomRect(current_point)
+                if result:
+                    self._rectToErase = result
+                    self._shapesCollection.deleteShape(result)
+                    self.update()
+            
+            case Qt.MouseButton.LeftButton:
+                new_shape = self._customRectFactory.getNewCustomRect(a0.pos())
 
-        # TODO: Move shape check to other place
-        if self._collisionChecker.completeCollisionCheck(new_shape):
-            self._shapesCollection.addShape(new_shape)
-            self.update()
-        else:
-            print(f"Shape didn't pass collision check")
-
+                # TODO: Move shape check to other place
+                if self._collisionChecker.completeCollisionCheck(new_shape):
+                    self._shapesCollection.addShape(new_shape)
+                    self.update()
+                else:
+                    print(f"Shape didn't pass collision check")
+        
         return super().mouseDoubleClickEvent(a0)
     
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
@@ -78,10 +89,7 @@ class DrawArea(QtWidgets.QWidget):
 
         match a0.button():
             case Qt.MouseButton.RightButton:
-                if result:
-                    self._rectToErase = result
-                    self._shapesCollection.deleteShape(result)
-                    self.update()
+                pass
 
             case Qt.MouseButton.LeftButton:
                 if self._moveStarted:
@@ -92,7 +100,17 @@ class DrawArea(QtWidgets.QWidget):
                     self._movingShape = None
 
             case Qt.MouseButton.MidButton:
-                print("Slot for link creation")
+                if result:
+                    if self._shapeToLink:
+                        if self._shapeToLink == result:
+                            self._shapeToLink = None
+                        else:
+                            self._shapeLinksCollection.append(ShapesLinkLine(self._shapeToLink, result))
+                            self._shapeToLink = None
+                    else:
+                        self._shapeToLink = result
+                else:
+                    self._shapeToLink = None
 
         return super().mouseReleaseEvent(a0)
     
@@ -126,17 +144,15 @@ class DrawArea(QtWidgets.QWidget):
     def paintEvent(self, a0: QPaintEvent | None) -> None:
         qp = QPainter(self)
 
-        for rect in self._shapesCollection.nodesList:
-            qp.setPen(Qt.PenStyle.NoPen)
-            qp.setBrush(rect.color)
-            qp.drawRect(rect)
+        qp.eraseRect(0, 0, self.width(), self.height())
 
-        if self._rectToErase:
-            qp.eraseRect(self._rectToErase)
-            self._rectToErase = None
+        for rect in self._shapesCollection.nodesList:
+            rect.drawRect(qp)
 
         if self._movingShape and self._moveStarted:
-            qp.setBrush(self._movingShape.color)
-            qp.drawRect(self._movingShape)
+            self._movingShape.drawRect(qp)
+
+        for link in self._shapeLinksCollection:
+            link.drawLink(qp)
         
         return super().paintEvent(a0)
