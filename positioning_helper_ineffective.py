@@ -37,13 +37,10 @@ class CollisionProcessor():
 
     # Check if new shape fits into draw area
     def areaBorderCheck(self, shape: CustomRect) -> bool:
-        print("area check")
         if shape.top() < 0 or shape.left() < 0:
-            print("Failed top or left")
             return False
 
         if shape.bottom() > self._drawingWidget.height() or shape.right() > self._drawingWidget.width():
-            print("Failed bottom or right")
             return False
         
         return True
@@ -64,7 +61,7 @@ class CollisionProcessor():
     def checkMovePossibility(self, shape: CustomRect, delta_x: int, delta_y: int) -> bool:
         new_center = QPoint(shape.centerPoint.x() + delta_x, shape.centerPoint.y() + delta_y)
 
-        # TODO: Dummy shape should be twin class for without any functions except for size
+        # TODO: Dummy shape should be twin class without any functions except for size
         # used only to do collision check
         dummy_shape = CustomRect(new_center, shape.size(), shape.color)
 

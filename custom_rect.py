@@ -1,4 +1,5 @@
 import sys
+from random import randint
 
 from typing import Union
 
@@ -37,3 +38,26 @@ class CustomRect(QRect):
         self._centerPoint.setX(self._centerPoint.x() + dx)
         self._centerPoint.setY(self._centerPoint.y() + dy)
         self.moveCenter(self._centerPoint)
+
+class CustomRectBaseFactory():
+    def __init__(self) -> None:
+        self._defaultSize: QSize = QSize(constants.RECT_SIZE_X, constants.RECT_SIZE_Y)
+        self.__defaultColor: QColor = Qt.GlobalColor.black
+    
+    def getNewCustomRect(self, centerPoint: QPoint, size: QSize, color: QColor) -> CustomRect:
+        return CustomRect(centerPoint, size, color)
+    
+    def getNewCustomRect(self, centerPoint: QPoint) -> CustomRect:
+        return CustomRect(centerPoint, self._defaultSize, self.__defaultColor)
+    
+class CustomRectRandomColorFactory(CustomRectBaseFactory):
+    def __init__(self) -> None:
+        self.__colorTable = (Qt.GlobalColor.red,
+                             Qt.GlobalColor.green,
+                             Qt.GlobalColor.blue,
+                             Qt.GlobalColor.yellow)
+        super().__init__()
+
+    def getNewCustomRect(self, centerPoint: QPoint) -> CustomRect:
+        color = self.__colorTable[randint(0, len(self.__colorTable) - 1)]
+        return CustomRect(centerPoint, self._defaultSize, color)

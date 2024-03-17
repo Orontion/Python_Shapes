@@ -7,7 +7,7 @@ from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QBrush, QPen, QPalet
 from PyQt5.QtCore import Qt, QRect, QSize, QPoint
 
 import constants
-from custom_rect import CustomRect
+from custom_rect import CustomRect, CustomRectRandomColorFactory
 from positioning_helper_ineffective import ShapesCollection, CollisionProcessor
 
 class DrawArea(QtWidgets.QWidget):
@@ -16,6 +16,7 @@ class DrawArea(QtWidgets.QWidget):
 
         self._shapesCollection = ShapesCollection()
         self._collisionChecker = CollisionProcessor(self, self._shapesCollection)
+        self._customRectFactory = CustomRectRandomColorFactory()
         self._movingShape: CustomRect = None
         self._moveStarted: bool = False
         self._rectToErase: CustomRect = None
@@ -23,20 +24,12 @@ class DrawArea(QtWidgets.QWidget):
 
         self.setLayout(QtWidgets.QBoxLayout(QtWidgets.QBoxLayout.Direction.LeftToRight, None))
 
-        self.test_lbl = QtWidgets.QLabel()
-        self.test_lbl.setText("Test")
-        self.layout().addWidget(self.test_lbl)
-
         self.setAutoFillBackground(True)
         palette = self.palette()
 
-        palette.setColor(self.backgroundRole(), Qt.GlobalColor.red)
+        palette.setColor(self.backgroundRole(), Qt.GlobalColor.gray)
 
         self.setPalette(palette)
-
-    def refreshSize(self) -> None:
-        self._collisionChecker._drawingWidget = self.size()
-        self.test_lbl.setText(f"NEW Height: {str(self.height())}; Width: {str(self.width())}")
 
     def switchColor(self) -> None:
         self.test_lbl.setText(f"Color check: {(self.palette().color(QPalette.ColorRole.Background) == Qt.GlobalColor.red)}")
@@ -55,10 +48,7 @@ class DrawArea(QtWidgets.QWidget):
         print(f"Double click catched")
         current_point = a0.localPos().toPoint()
 
-        # TODO: Move shape generation to separate method
-        new_shape = CustomRect(current_point,
-                               QSize(constants.RECT_SIZE_X, constants.RECT_SIZE_Y),
-                               Qt.GlobalColor.blue)
+        new_shape = self._customRectFactory.getNewCustomRect(current_point)
 
         # TODO: Move shape check to other place
         if self._collisionChecker.completeCollisionCheck(new_shape):
@@ -102,7 +92,7 @@ class DrawArea(QtWidgets.QWidget):
                     self._movingShape = None
 
             case Qt.MouseButton.MidButton:
-                self.switchColor()
+                print("Slot for link creation")
 
         return super().mouseReleaseEvent(a0)
     
@@ -137,7 +127,8 @@ class DrawArea(QtWidgets.QWidget):
         qp = QPainter(self)
 
         for rect in self._shapesCollection.nodesList:
-            qp.setPen(Qt.GlobalColor.black)
+            qp.setPen(Qt.PenStyle.NoPen)
+            qp.setBrush(rect.color)
             qp.drawRect(rect)
 
         if self._rectToErase:
@@ -145,7 +136,7 @@ class DrawArea(QtWidgets.QWidget):
             self._rectToErase = None
 
         if self._movingShape and self._moveStarted:
-            qp.setPen(Qt.GlobalColor.black)
+            qp.setBrush(self._movingShape.color)
             qp.drawRect(self._movingShape)
         
         return super().paintEvent(a0)
