@@ -1,7 +1,7 @@
 import sys
-from abc import ABC, abstractmethod
 
 from typing import Union
+from abc import ABC, abstractmethod
 
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QMouseEvent, QPainter, QPalette, QColor

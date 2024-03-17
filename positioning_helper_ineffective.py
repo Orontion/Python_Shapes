@@ -7,27 +7,28 @@ from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QBrush, QPen, QPalet
 from PyQt5.QtCore import Qt, QRect, QSize, QPoint
 
 import constants
-from custom_rect import CustomRect
+# from custom_rect import CustomRect
+from custom_shape import CustomShape
 
 class ShapesCollection():
     def __init__(self) -> None:
-        self._nodesList: List[CustomRect] = []
+        self._nodesList: List[CustomShape] = []
 
     @property
-    def nodesList(self) -> List[CustomRect]:
+    def nodesList(self) -> List[CustomShape]:
         return self._nodesList
 
-    def addShape(self, shape: CustomRect, dimensionStart: int = 0) -> None:
+    def addShape(self, shape: CustomShape, dimensionStart: int = 0) -> None:
         self._nodesList.append(shape)
 
-    def getShapeAtPoint(self, point: QPoint) -> CustomRect:
+    def getShapeAtPoint(self, point: QPoint) -> CustomShape:
         for node in self._nodesList:
-            if node.contains(point):
+            if node.isPointOnShape(point):
                 return node
 
         return None
     
-    def deleteShape(self, shape: CustomRect) -> None:
+    def deleteShape(self, shape: CustomShape) -> None:
         self._nodesList.remove(shape)
 
 class CollisionProcessor():
@@ -36,33 +37,23 @@ class CollisionProcessor():
         self._shapesCollection = shapesCollection
 
     # Check if new shape fits into draw area
-    def areaBorderCheck(self, shape: CustomRect) -> bool:
-        if shape.top() < 0 or shape.left() < 0:
+    def areaBorderCheck(self, shape: CustomShape) -> bool:
+        if shape.getTopLeftBound().x() < 0 or shape.getTopLeftBound().y() < 0:
             return False
 
-        if shape.bottom() > self._drawingWidget.height() or shape.right() > self._drawingWidget.width():
+        if shape.getBottomRightBound().x() > self._drawingWidget.height() or shape.getBottomRightBound().y() > self._drawingWidget.width():
             return False
         
         return True
     
     #Check collisions with other shapes
-    def shapeCollisionCheck(self, shape: CustomRect) -> bool:
+    def shapeCollisionCheck(self, shape: CustomShape) -> bool:
         for node in self._shapesCollection.nodesList:
-            if node and shape.intersects(node):
+            if node and shape.checkIntersection(node):
                 return False
             
         return True
     
     # Complete collision check
-    def completeCollisionCheck(self, shape: CustomRect) -> bool:
+    def completeCollisionCheck(self, shape: CustomShape) -> bool:
         return self.areaBorderCheck(shape) and self.shapeCollisionCheck(shape)
-    
-    # Check collisions before actual move
-    def checkMovePossibility(self, shape: CustomRect, delta_x: int, delta_y: int) -> bool:
-        new_center = QPoint(shape.centerPoint.x() + delta_x, shape.centerPoint.y() + delta_y)
-
-        # TODO: Dummy shape should be twin class without any functions except for size
-        # used only to do collision check
-        dummy_shape = CustomRect(new_center, shape.size(), shape.color)
-
-        return self.completeCollisionCheck(dummy_shape)

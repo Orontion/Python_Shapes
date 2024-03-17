@@ -9,14 +9,13 @@ from PyQt5.QtGui import QMouseEvent, QPainter, QPalette, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect, QSize
 
 import constants
+from custom_shape import CustomShape
 
-class CustomRect(QRect):
+class CustomRect(CustomShape):
     def __init__(self, centerPoint: QPoint, size: QSize, color: QColor) -> None:
-        self._centerPoint = centerPoint
         self._size = size
-        self._color = color
-
-        super().__init__(CustomRect.calculateAnchorPoint(centerPoint, size), self._size)
+        self._geometryObject = QRect(CustomRect.__calculateAnchorPoint(centerPoint, size), self._size)
+        super().__init__(centerPoint, color, self._geometryObject)
 
     @property
     def centerPoint(self) -> QPoint:
@@ -26,7 +25,7 @@ class CustomRect(QRect):
     def color(self) -> QColor:
         return self._color
 
-    def calculateAnchorPoint(centerPoint: QPoint, size: QSize) -> QPoint:
+    def __calculateAnchorPoint(centerPoint: QPoint, size: QSize) -> QPoint:
         min_x = ceil(centerPoint.x() - (size.width() - 1) / 2)
         min_y = ceil(centerPoint.y() - (size.height() -1) / 2)
 
@@ -35,50 +34,56 @@ class CustomRect(QRect):
     def setNewCenterPoint(self, dx: int, dy: int) -> None:
         self._centerPoint.setX(self._centerPoint.x() + dx)
         self._centerPoint.setY(self._centerPoint.y() + dy)
-        self.moveCenter(self._centerPoint)
+        self._geometryObject.moveCenter(self._centerPoint)
 
-    def getLinkPoint(self, shape: "CustomRect") -> QPoint:
+    def getLinkPoint(self, shape: CustomShape) -> QPoint:
         linkPoint = QPoint()
 
         borderDeltaX = 0
         borderDeltaY = 0
 
         if shape.centerPoint.x() > self.centerPoint.x():
-            if shape.bottomLeft().x() > self.bottomRight().x():
-                borderDeltaX = shape.bottomLeft().x() - self.bottomRight().x()
+            if shape.getBottomLeftBound().x() > self.getBottomRightBound().x():
+                borderDeltaX = shape.getBottomLeftBound().x() - self.getBottomRightBound().x()
         else:
-            if shape.bottomRight().x() < self.bottomLeft().x():
-                borderDeltaX = shape.bottomRight().x() - self.bottomLeft().x()
+            if shape.getBottomRightBound().x() < self.getBottomLeftBound().x():
+                borderDeltaX = shape.getBottomRightBound().x() - self.getBottomLeftBound().x()
 
         if shape.centerPoint.y() > self.centerPoint.y():
-            if shape.topRight().y() > self.bottomRight().y():
-                borderDeltaY = shape.topRight().y() - self.bottomRight().y()
+            if shape.getTopRightBound().y() > self.getBottomRightBound().y():
+                borderDeltaY = shape.getTopRightBound().y() - self.getBottomRightBound().y()
         else:
-            if shape.bottomRight().y() < self.topRight().y():
-                borderDeltaY = shape.bottomRight().y() - self.topRight().y()
+            if shape.getBottomRightBound().y() < self.getTopRightBound().y():
+                borderDeltaY = shape.getBottomRightBound().y() - self.getTopRightBound().y()
 
         if abs(borderDeltaX) > abs(borderDeltaY):
             linkPoint.setY(self._centerPoint.y())
 
             if borderDeltaX > 0:
-                linkPoint.setX(self.bottomRight().x())
+                linkPoint.setX(self.getBottomRightBound().x())
             else:
-                linkPoint.setX(self.bottomLeft().x())
+                linkPoint.setX(self.getBottomLeftBound().x())
             
         else:
             linkPoint.setX(self._centerPoint.x())
 
             if borderDeltaY > 0:
-                linkPoint.setY(self.bottomRight().y())
+                linkPoint.setY(self.getBottomRightBound().y())
             else:
-                linkPoint.setY(self.topRight().y())
+                linkPoint.setY(self.getTopRightBound().y())
 
         return linkPoint
 
-    def drawRect(self, painter: QPainter) -> None:
+    def drawCustomShape(self, painter: QPainter) -> None:
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(self.color)
-        painter.drawRect(self)
+        painter.drawRect(self._geometryObject)
+
+    def checkIntersection(self, shape: CustomShape) -> bool:
+        return self._boundaryRect.intersects(shape.boundaryRect)
+
+    def isPointOnShape(self, point: QPoint) -> bool:
+        return self._geometryObject.contains(point)
 
 class CustomRectBaseFactory():
     def __init__(self) -> None:

@@ -134,8 +134,10 @@ class DrawArea(QtWidgets.QWidget):
 
             self._lastMousePos = a0.pos()
 
-            if self._collisionChecker.checkMovePossibility(self._movingShape, delta_x, delta_y):
-                self._movingShape.setNewCenterPoint(delta_x, delta_y)
+            self._movingShape.setNewCenterPoint(delta_x, delta_y)
+
+            if not self._collisionChecker.completeCollisionCheck(self._movingShape):
+                self._movingShape.setNewCenterPoint(-delta_x, -delta_y)
 
             self.update()
 
@@ -147,10 +149,10 @@ class DrawArea(QtWidgets.QWidget):
         qp.eraseRect(0, 0, self.width(), self.height())
 
         for rect in self._shapesCollection.nodesList:
-            rect.drawRect(qp)
+            rect.drawCustomShape(qp)
 
         if self._movingShape and self._moveStarted:
-            self._movingShape.drawRect(qp)
+            self._movingShape.drawCustomShape(qp)
 
         for link in self._shapeLinksCollection:
             link.drawLink(qp)
