@@ -24,7 +24,8 @@ class DrawArea(QtWidgets.QWidget):
         self._rectToErase: CustomRect = None
         self._lastMousePos: QPoint = None
         self._shapeToLink: CustomRect = None
-        self._lockCursor: bool = False
+        self._newShapeRequested: bool = False
+        self._shapeLinkingRequested: bool = False
 
         self._shapeLinksCollection: List[ShapesLinkBase] = []
 
@@ -61,30 +62,23 @@ class DrawArea(QtWidgets.QWidget):
                     self.update()
             
             case Qt.MouseButton.LeftButton:
-                new_shape = self._customRectFactory.getNewCustomRect(a0.pos())
-
-                # TODO: Move shape check to other place
-                if self._collisionChecker.completeCollisionCheck(new_shape):
-                    self._shapesCollection.addShape(new_shape)
-                    self.update()
-                else:
-                    print(f"Shape didn't pass collision check")
+                self.tryCreateRect(a0.pos())
         
         return super().mouseDoubleClickEvent(a0)
     
     def mousePressEvent(self, a0: QMouseEvent | None) -> None:
         self._lastMousePos = a0.globalPos()
-        result = self._shapesCollection.getShapeAtPoint(a0.pos())
 
-        if result:
-            self._lockCursor = True
-            print(f"MOUSEPRESSEVENT shape coords: {result.centerPoint.x()}, {result.centerPoint.y()}")
-
-            match a0.button():
-                case Qt.MouseButton.LeftButton:
+        match a0.button():
+            case Qt.MouseButton.LeftButton:
+                if self._newShapeRequested:
+                    self.tryCreateRect(a0.pos())
+                    self._newShapeRequested = False
+                elif self._shapeLinkingRequested:
+                    pass
+                else:
+                    result = self._shapesCollection.getShapeAtPoint(a0.pos())
                     self._movingShape = result
-        else:
-            self._lockCursor = False
 
         return super().mousePressEvent(a0)
 
@@ -97,6 +91,8 @@ class DrawArea(QtWidgets.QWidget):
                 pass
 
             case Qt.MouseButton.LeftButton:
+                if self._shapeLinkingRequested:
+                    self.selectShapeForLinking(result)
                 if self._moveStarted:
                     self._shapesCollection.addShape(self._movingShape)
                     self._movingShape = None
@@ -105,17 +101,7 @@ class DrawArea(QtWidgets.QWidget):
                     self._movingShape = None
 
             case Qt.MouseButton.MidButton:
-                if result:
-                    if self._shapeToLink:
-                        if self._shapeToLink == result:
-                            self._shapeToLink = None
-                        else:
-                            self._shapeLinksCollection.append(ShapesLinkLine(self._shapeToLink, result))
-                            self._shapeToLink = None
-                    else:
-                        self._shapeToLink = result
-                else:
-                    self._shapeToLink = None
+                self.selectShapeForLinking(result)
 
         return super().mouseReleaseEvent(a0)
     
@@ -175,3 +161,41 @@ class DrawArea(QtWidgets.QWidget):
             shape.setNewCenterPoint(oldPoint)
             return False
         
+    def tryCreateRect(self, point: QPoint) -> bool:
+        new_shape = self._customRectFactory.getNewCustomRect(point)
+
+        if self._collisionChecker.completeCollisionCheck(new_shape):
+            self._shapesCollection.addShape(new_shape)
+            self.update()
+            return True
+        else:
+            return False
+        
+    def selectShapeForLinking(self, shape: CustomShape) -> None:
+        # TODO: Refine if sequense
+        if shape:
+            if self._shapeToLink:
+                if self._shapeToLink == shape:
+                    self._shapeToLink = None
+                    self._shapeLinkingRequested = False
+                else:
+                    self._shapeLinksCollection.append(ShapesLinkLine(self._shapeToLink, shape))
+                    self._shapeToLink = None
+                    self._shapeLinkingRequested = False
+                    self.update()
+            else:
+                self._shapeToLink = shape
+        else:
+            self._shapeToLink = None
+            self._shapeLinkingRequested = False
+
+    def startRectCreation(self) -> None:
+        self._newShapeRequested = True
+
+    def startLinkCreation(self) -> None:
+        self._shapeLinkingRequested = True
+
+    def clearArea(self) -> None:
+        self._shapeLinksCollection.clear()
+        self._shapesCollection.clearCollection()
+        self.update()

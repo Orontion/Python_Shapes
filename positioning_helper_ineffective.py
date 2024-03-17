@@ -31,6 +31,9 @@ class ShapesCollection():
     def deleteShape(self, shape: CustomShape) -> None:
         self._nodesList.remove(shape)
 
+    def clearCollection(self) -> None:
+        self._nodesList.clear()
+
 class CollisionProcessor():
     def __init__(self, drawingWidget: QWidget, shapesCollection: ShapesCollection) -> None:
         self._drawingWidget = drawingWidget
