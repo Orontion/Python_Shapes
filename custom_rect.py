@@ -1,5 +1,6 @@
 import sys
 from random import randint
+from math import ceil
 
 from typing import Union
 
@@ -26,9 +27,8 @@ class CustomRect(QRect):
         return self._color
 
     def calculateAnchorPoint(centerPoint: QPoint, size: QSize) -> QPoint:
-        # TODO: rework calculation, now it leads to incorrect rounding and visual bug
-        min_x = centerPoint.x() - size.width() // 2
-        min_y = centerPoint.y() - size.height() // 2
+        min_x = ceil(centerPoint.x() - (size.width() - 1) / 2)
+        min_y = ceil(centerPoint.y() - (size.height() -1) / 2)
 
         return QPoint(min_x, min_y)
     
