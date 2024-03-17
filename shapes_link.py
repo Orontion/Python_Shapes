@@ -1,11 +1,7 @@
-import sys
-
-from typing import Union
 from abc import ABC, abstractmethod
 
-from PyQt5 import QtWidgets
-from PyQt5.QtGui import QMouseEvent, QPainter, QPalette, QColor
-from PyQt5.QtCore import Qt, QPoint, QRect, QSize
+from PyQt5.QtGui import QPainter
+from PyQt5.QtCore import Qt
 
 from custom_rect import CustomRect
 

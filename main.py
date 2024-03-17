@@ -1,12 +1,11 @@
 import sys
 
-from PyQt5.QtWidgets import QApplication, QLabel, QWidget
+from PyQt5.QtWidgets import QApplication
 
-import constants
-import main_window
+from main_window import MainWindow
 
 app = QApplication([])
 
-window = main_window.MainWindow()
+window = MainWindow()
 
 sys.exit(app.exec())

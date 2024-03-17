@@ -1,16 +1,22 @@
-import sys
-
 from typing import Union, List
+from enum import Enum
 
 from PyQt5 import QtWidgets
-from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QBrush, QPen, QPalette, QColor
-from PyQt5.QtCore import Qt, QRect, QSize, QPoint
+from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QPalette
+from PyQt5.QtCore import Qt, QPoint
 
-import constants
 from custom_rect import CustomRect, CustomRectRandomColorFactory
 from custom_shape import CustomShape
 from positioning_helper_ineffective import ShapesCollection, CollisionProcessor
 from shapes_link import ShapesLinkBase, ShapesLinkLine
+
+class DrawAreaActions(Enum):
+    DELETE_SHAPE = 1
+    CREATE_RECT = 2
+    CREATE_LINK = 3
+    SELECT_FOR_MOVE = 4
+    MOVE_TO_POINT = 5
+    MOVE_PROCESS = 6
 
 class DrawArea(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget = None, flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags()) -> None:
@@ -20,12 +26,10 @@ class DrawArea(QtWidgets.QWidget):
         self._collisionChecker = CollisionProcessor(self, self._shapesCollection)
         self._customRectFactory = CustomRectRandomColorFactory()
         self._movingShape: CustomRect = None
-        self._moveStarted: bool = False
-        self._rectToErase: CustomRect = None
+        self._shapeForMove: CustomRect = None
         self._lastMousePos: QPoint = None
         self._shapeToLink: CustomRect = None
-        self._newShapeRequested: bool = False
-        self._shapeLinkingRequested: bool = False
+        self._currentAction: DrawAreaActions = None
 
         self._shapeLinksCollection: List[ShapesLinkBase] = []
 
@@ -38,28 +42,11 @@ class DrawArea(QtWidgets.QWidget):
 
         self.setPalette(palette)
 
-    def switchColor(self) -> None:
-        self.test_lbl.setText(f"Color check: {(self.palette().color(QPalette.ColorRole.Background) == Qt.GlobalColor.red)}")
-
-        palette = self.palette()
-
-        if palette.color(QPalette.ColorRole.Background) == Qt.GlobalColor.red:
-            palette.setColor(QPalette.ColorRole.Background, Qt.GlobalColor.green)
-        else:
-            palette.setColor(QPalette.ColorRole.Background, Qt.GlobalColor.red)
-
-        self.setPalette(palette)
-
     # Double click
     def mouseDoubleClickEvent(self, a0: QMouseEvent | None) -> None:
         match a0.button():
             case Qt.MouseButton.RightButton:
-                result = self._shapesCollection.getShapeAtPoint(a0.pos())
-
-                if result:
-                    self._rectToErase = result
-                    self._shapesCollection.deleteShape(result)
-                    self.update()
+                self.tryDeleteRect(a0.pos())
             
             case Qt.MouseButton.LeftButton:
                 self.tryCreateRect(a0.pos())
@@ -71,14 +58,10 @@ class DrawArea(QtWidgets.QWidget):
 
         match a0.button():
             case Qt.MouseButton.LeftButton:
-                if self._newShapeRequested:
-                    self.tryCreateRect(a0.pos())
-                    self._newShapeRequested = False
-                elif self._shapeLinkingRequested:
-                    pass
-                else:
-                    result = self._shapesCollection.getShapeAtPoint(a0.pos())
-                    self._movingShape = result
+                match self._currentAction:
+                    case _ :
+                        result = self._shapesCollection.getShapeAtPoint(a0.pos())
+                        self._movingShape = result
 
         return super().mousePressEvent(a0)
 
@@ -91,14 +74,27 @@ class DrawArea(QtWidgets.QWidget):
                 pass
 
             case Qt.MouseButton.LeftButton:
-                if self._shapeLinkingRequested:
-                    self.selectShapeForLinking(result)
-                if self._moveStarted:
-                    self._shapesCollection.addShape(self._movingShape)
-                    self._movingShape = None
-                    self._moveStarted = False
-                else:
-                    self._movingShape = None
+                match self._currentAction:
+                    case DrawAreaActions.CREATE_RECT:
+                        self.tryCreateRect(a0.pos())
+                        self._currentAction = None
+                    case DrawAreaActions.CREATE_LINK:
+                        self.selectShapeForLinking(result)
+                    case DrawAreaActions.DELETE_SHAPE:
+                        self.tryDeleteRect(a0.pos())
+                    case DrawAreaActions.SELECT_FOR_MOVE:
+                        self._shapeForMove = self._shapesCollection.getShapeAtPoint(a0.pos())
+                        self._currentAction = DrawAreaActions.MOVE_TO_POINT
+                    case DrawAreaActions.MOVE_TO_POINT:
+                        self.moveShapeToPosition(self._shapeForMove, a0.pos())
+                        self._shapeForMove = None
+                        self._currentAction = None
+                    case DrawAreaActions.MOVE_PROCESS:
+                        self._shapesCollection.addShape(self._movingShape)
+                        self._movingShape = None
+                        self._currentAction = None
+                    case _ :
+                        self._movingShape = None
 
             case Qt.MouseButton.MidButton:
                 self.selectShapeForLinking(result)
@@ -128,7 +124,7 @@ class DrawArea(QtWidgets.QWidget):
             rect.drawCustomShape(qp)
 
         # Draw currentrly moving shape separately - it is removed from collection while moving
-        if self._movingShape and self._moveStarted:
+        if self._movingShape and self._currentAction == DrawAreaActions.MOVE_PROCESS:
             self._movingShape.drawCustomShape(qp)
 
         # Draw links
@@ -139,9 +135,9 @@ class DrawArea(QtWidgets.QWidget):
     
     def processMoveAction(self, delta_x: int, delta_y: int) -> bool:
         if self._movingShape:
-            if not self._moveStarted:
+            if self._currentAction != DrawAreaActions.MOVE_PROCESS:
                 self._shapesCollection.deleteShape(self._movingShape)
-                self._moveStarted = True
+                self._currentAction = DrawAreaActions.MOVE_PROCESS
 
             new_point = QPoint(self._movingShape.centerPoint.x() + delta_x,
                                self._movingShape.centerPoint.y() + delta_y)
@@ -149,6 +145,12 @@ class DrawArea(QtWidgets.QWidget):
             return self.tryMoveShape(self._movingShape, new_point)
         
         return True
+
+    def moveShapeToPosition(self, shape: CustomShape, newPoint: QPoint) -> None:
+        self._shapesCollection.deleteShape(shape)
+        self.tryMoveShape(shape, newPoint)
+        self._shapesCollection.addShape(shape)
+        self.update()
 
     def tryMoveShape(self, shape: CustomShape, newPoint: QPoint) -> bool:
         oldPoint = shape.centerPoint
@@ -171,29 +173,42 @@ class DrawArea(QtWidgets.QWidget):
         else:
             return False
         
+    def tryDeleteRect(self, point: QPoint) -> bool:
+        result = self._shapesCollection.getShapeAtPoint(point)
+
+        if result:
+            self._shapesCollection.deleteShape(result)
+            self.update()
+
     def selectShapeForLinking(self, shape: CustomShape) -> None:
         # TODO: Refine if sequense
         if shape:
             if self._shapeToLink:
                 if self._shapeToLink == shape:
                     self._shapeToLink = None
-                    self._shapeLinkingRequested = False
+                    self._currentAction = None
                 else:
                     self._shapeLinksCollection.append(ShapesLinkLine(self._shapeToLink, shape))
                     self._shapeToLink = None
-                    self._shapeLinkingRequested = False
+                    self._currentAction = None
                     self.update()
             else:
                 self._shapeToLink = shape
         else:
             self._shapeToLink = None
-            self._shapeLinkingRequested = False
+            self._currentAction = None
 
     def startRectCreation(self) -> None:
-        self._newShapeRequested = True
+        self._currentAction = DrawAreaActions.CREATE_RECT
 
     def startLinkCreation(self) -> None:
-        self._shapeLinkingRequested = True
+        self._currentAction = DrawAreaActions.CREATE_LINK
+
+    def startRectMove(self) -> None:
+        self._currentAction = DrawAreaActions.SELECT_FOR_MOVE
+
+    def deleteShape(self) -> None:
+        self._currentAction = DrawAreaActions.DELETE_SHAPE
 
     def clearArea(self) -> None:
         self._shapeLinksCollection.clear()

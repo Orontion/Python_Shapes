@@ -1,11 +1,8 @@
-import sys
-
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtGui import QPainter
+from PyQt5.QtWidgets import QToolBar
 
 import constants
 
-class MainToolbar(QtWidgets.QToolBar):
+class MainToolbar(QToolBar):
     def __init__(self) -> None:
         super().__init__()
         self.addRectBtn = self.addAction(constants.ADD_RECT_BUTTON)
@@ -13,6 +10,8 @@ class MainToolbar(QtWidgets.QToolBar):
 
         self.addSeparator()
 
-        self.clearBtn = self.addAction(constants.CLEAR_DRAW_AREA_BUTTON)
+        self.moveRectButton = self.addAction(constants.MOVE_RECT_BUTTON)
 
-        self.addRectBtn.trigger()
+        self.addSeparator()
+
+        self.clearBtn = self.addAction(constants.CLEAR_DRAW_AREA_BUTTON)

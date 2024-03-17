@@ -1,11 +1,7 @@
-import sys
 from random import randint
 from math import ceil
 
-from typing import Union
-
-from PyQt5 import QtWidgets
-from PyQt5.QtGui import QMouseEvent, QPainter, QPalette, QColor
+from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect, QSize
 
 import constants

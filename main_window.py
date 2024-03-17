@@ -1,11 +1,7 @@
-import sys
-
-from PyQt5 import QtCore
-from PyQt5.QtGui import QPainter
-from PyQt5.QtWidgets import QAction, QMainWindow
+from PyQt5.QtWidgets import QMainWindow
 
 import constants
-import main_toolbar
+from main_toolbar import MainToolbar
 from draw_area import DrawArea
 
 class MainWindow(QMainWindow):
@@ -16,17 +12,24 @@ class MainWindow(QMainWindow):
                          constants.MAIN_WINDOW_SIZE_X,
                          constants.MAIN_WINDOW_SIZE_Y)
         
+        # Prohibit resizing
+        self.setFixedSize(self.width(), self.height())
+        
+        # Drawing widget
         self.draw_area = DrawArea(self)
-
-        self._createToolBar(self.draw_area)
-
         self.setCentralWidget(self.draw_area)
+
+        # Toolbar to control drawing widget
+        self._createToolBar(self.draw_area)
+        
         self.show()
 
     def _createToolBar(self, draw_area: DrawArea):
-        tools = main_toolbar.MainToolbar()
+        tools = MainToolbar()
         self.addToolBar(tools)
         
         tools.addRectBtn.triggered.connect(draw_area.startRectCreation)
         tools.addLinkBtn.triggered.connect(draw_area.startLinkCreation)
+        tools.moveRectButton.triggered.connect(draw_area.startRectMove)
         tools.clearBtn.triggered.connect(draw_area.clearArea)
+        

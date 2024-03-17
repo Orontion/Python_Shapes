@@ -1,13 +1,8 @@
-import sys
-
-from typing import Union, List
+from typing import List
 
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QBrush, QPen, QPalette, QColor
-from PyQt5.QtCore import Qt, QRect, QSize, QPoint
+from PyQt5.QtCore import QPoint
 
-import constants
-# from custom_rect import CustomRect
 from custom_shape import CustomShape
 
 class ShapesCollection():
@@ -18,7 +13,7 @@ class ShapesCollection():
     def nodesList(self) -> List[CustomShape]:
         return self._nodesList
 
-    def addShape(self, shape: CustomShape, dimensionStart: int = 0) -> None:
+    def addShape(self, shape: CustomShape) -> None:
         self._nodesList.append(shape)
 
     def getShapeAtPoint(self, point: QPoint) -> CustomShape:
