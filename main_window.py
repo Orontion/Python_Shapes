@@ -30,6 +30,6 @@ class MainWindow(QMainWindow):
         
         tools.addRectBtn.triggered.connect(draw_area.startRectCreation)
         tools.addLinkBtn.triggered.connect(draw_area.startLinkCreation)
-        tools.moveRectButton.triggered.connect(draw_area.startRectMove)
+        tools.moveShapeButton.triggered.connect(draw_area.startRectMove)
         tools.clearBtn.triggered.connect(draw_area.clearArea)
         

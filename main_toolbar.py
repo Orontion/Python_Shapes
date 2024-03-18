@@ -10,7 +10,7 @@ class MainToolbar(QToolBar):
 
         self.addSeparator()
 
-        self.moveRectButton = self.addAction(constants.MOVE_RECT_BUTTON)
+        self.moveShapeButton = self.addAction(constants.MOVE_SHAPE_BUTTON)
 
         self.addSeparator()
 
