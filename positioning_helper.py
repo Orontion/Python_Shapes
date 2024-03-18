@@ -6,9 +6,14 @@ from PyQt5 import QtWidgets
 from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter, QBrush, QPen, QPalette, QColor
 from PyQt5.QtCore import Qt, QRect, QSize, QPoint
 
-import constants
 from custom_rect import CustomRect
 
+# First iteration of shapes positioning classes
+# Work abandoned as this solution did not provide expected result
+# and rework would cost too much of time
+
+
+# Class for K-D Tree implemetation
 class ShapeNode():
     def __init__(self, shape: CustomRect) -> None:
         self.shape = shape
@@ -25,20 +30,24 @@ class ShapeNode():
             
         return False
     
+# Shapes collection based on K-D Tree for effective search
 class ShapeNodesCollection():
     def __init__(self) -> None:
         self._root: ShapeNode = None
 
+    # Root element
     @property
     def root(self) -> ShapeNode:
         return self._root
 
+    # Public method to add shape
     def addShape(self, shape: CustomRect, dimensionStart: int = 0) -> None:
         if self._root == None:
             self._root = ShapeNode(shape)
         else:
             self.__addNodeInternal(self._root, ShapeNode(shape), dimensionStart)
 
+    # Internal recursion based method to add shape to tree
     def __addNodeInternal(self, root: ShapeNode, node: ShapeNode, depth: int) -> None:
 
         currentDimension = depth % 2
@@ -62,6 +71,7 @@ class ShapeNodesCollection():
 
         return root
     
+    # Public method for searching shape closest to specified point
     def searchNearestShape(self, point: QPoint) -> CustomRect:
         result = self.__searchNearestNodeInternal(self._root, point, 0)
 
@@ -70,6 +80,7 @@ class ShapeNodesCollection():
         else:
             return None
     
+    # Internal recursion based search through K-D Tree
     def __searchNearestNodeInternal(self, root: ShapeNode, point: QPoint, depth: int) -> ShapeNode:
         if not root:
             return None
@@ -95,6 +106,8 @@ class ShapeNodesCollection():
 
         return best
 
+    # Static method to simplify code and switch metween X and Y using index
+    # Should be internal
     @staticmethod
     def getCoordsDimension(point: QPoint, dimension: int) -> int:
         if dimension == 0:
@@ -104,9 +117,11 @@ class ShapeNodesCollection():
         else:
             raise IndexError(f"Dimension {dimension} is not supported for 2D shapes")
 
+    # Public method to get a shape at certain point (collection assumes shapes can't intersect)
     def getShapeAtPoint(self, point: QPoint) -> CustomRect:
         return self.__searchNode(ShapeNode(point))
 
+    # Public method for shape deletion
     def deleteShape(self, shape: CustomRect) -> None:
         nodeToDelete = self.__searchNode(self._root, ShapeNode(shape), 0)
 
@@ -116,6 +131,7 @@ class ShapeNodesCollection():
         else:
             print("No nodes found")
 
+    # Internal recursive method for shape search
     def __searchNode(self, root: ShapeNode, node: ShapeNode, depth: int) -> ShapeNode:
         if not root:
             return None
@@ -130,6 +146,8 @@ class ShapeNodesCollection():
         
         return self.__searchNode(root.right, node, depth + 1)
 
+    # Internal method for deletion shape from collection
+    # NOT FINISHED
     def __deleteNodeInternal(self, root: ShapeNode, node: ShapeNode) -> None:
         print("Starting deletion")
         startingDim = root.dimension
@@ -152,6 +170,8 @@ class ShapeNodesCollection():
         print(f"Deleted node dim: {node.dimension}")
         print(f"New subtree start dim: {newCollection.root.dimension}")
 
+    # This method was supposed to store shapes to list for ease of access
+    # NOT FINISHED
     def __addNodeToList(self, node: ShapeNode, nodeList: List[ShapeNode]) -> None:
         if not node:
             return
@@ -164,7 +184,7 @@ class ShapeNodesCollection():
 
         nodeList.append(node)
 
-
+    # Internal static method for closest shape selection based on center point
     @staticmethod
     def __closestNode(targetPoint: QPoint, node_1: ShapeNode, node_2: ShapeNode) -> ShapeNode:
         if not node_1:
@@ -181,6 +201,7 @@ class ShapeNodesCollection():
         else:
             return node_2
 
+    # Internal static method to calculate distance between points
     @staticmethod
     def __calcDistance(point_1: QPoint, point_2: QPoint) -> float:
         cat1 = point_1.x() - point_2.x()

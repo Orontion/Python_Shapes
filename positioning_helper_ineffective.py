@@ -5,6 +5,12 @@ from PyQt5.QtCore import QPoint
 
 from custom_shape import CustomShape
 
+# Class with custom shapes collection
+# Main goals: store all shapes on a plane, add/modify/delete shapes,
+# effectively search for a shape at certain point
+# effectively search for nearest shape(s) to point/to shape
+#
+# Implemetation below is ineffective and does not implement nearest shape(s) search
 class ShapesCollection():
     def __init__(self) -> None:
         self._nodesList: List[CustomShape] = []
@@ -29,6 +35,12 @@ class ShapesCollection():
     def clearCollection(self) -> None:
         self._nodesList.clear()
 
+# Class to check for shapes collisions/overlaps
+# Requires area to process borders collisions 
+# and collection of shapes to process collisions between shapes
+#
+# Current implemetation is ineffective and uses simple iterating through entire shapes collection
+# This works for a small number of shapes, but will lead to poor performance for bigger collection
 class CollisionProcessor():
     def __init__(self, drawingWidget: QWidget, shapesCollection: ShapesCollection) -> None:
         self._drawingWidget = drawingWidget
@@ -44,7 +56,7 @@ class CollisionProcessor():
         
         return True
     
-    #Check collisions with other shapes
+    # Check collisions with other shapes
     def shapeCollisionCheck(self, shape: CustomShape) -> bool:
         for node in self._shapesCollection.nodesList:
             if node and shape.checkIntersection(node):
