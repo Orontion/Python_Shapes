@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from PyQt5.QtGui import QPainter, QColor
+from PyQt5.QtGui import QPainter
 from PyQt5.QtCore import QPoint, QRect
 
 # Base class for all shapes being drawn
@@ -57,4 +57,15 @@ class CustomShape(ABC):
     # This method checks if specific point is located on the shape
     @abstractmethod
     def isPointOnShape(self, point: QPoint) -> bool:
+        pass
+
+# Base class for CustomShapes factories
+class CustomShapeBaseFactory(ABC):
+    @abstractmethod
+    def __init__(self) -> None:
+        super().__init__()
+
+    # General factory method to produce custom shapes
+    @abstractmethod
+    def getNewCustomShape(self, centerPoint: QPoint) -> CustomShape:
         pass

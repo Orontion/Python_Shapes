@@ -1,45 +1,41 @@
 from typing import Union, List
-from enum import Enum
+from enum import Enum, auto
 
 from PyQt5 import QtWidgets
 from PyQt5.QtGui import QMouseEvent, QPaintEvent, QPainter
 from PyQt5.QtCore import Qt, QPoint
 
-from custom_rect import CustomRect, CustomRectRandomColorFactory
-from custom_shape import CustomShape
-from positioning_helper_ineffective import ShapesCollection, CollisionProcessor
+from custom_rect import CustomRectRandomColorFactory
+
 from shapes_link import ShapesLinkBase, ShapesLinkLine
+from geometry_controller import GeometryController
 
 class DrawAreaActions(Enum):
-    DELETE_SHAPE = 1
-    CREATE_RECT_AT_POINT = 2
-    CREATE_LINK = 3
-    SELECT_FOR_MOVE = 4
-    MOVE_TO_POINT = 5
-    SHAPE_DRAG = 6
+    NO_ACTION = auto()
+    DELETE_SHAPE = auto()
+    CREATE_RECT_AT_POINT = auto()
+    SELECT_FOR_LINKING_LMB = auto()
+    CREATE_LINK_LMB = auto()
+    CREATE_LINK_MMB = auto()
+    SELECT_FOR_MOVE = auto()
+    MOVE_TO_POINT = auto()
+    SHAPE_SELECTED_FOR_DRAG = auto()
+    SHAPE_DRAG = auto()
 
 class DrawArea(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget = None, flags: Union[Qt.WindowFlags, Qt.WindowType] = Qt.WindowFlags()) -> None:
         super().__init__(parent, flags)
 
-        # TODO: Should be moved to separate shape processing class
-        # Collections for shapes and links
-        self._shapesCollection = ShapesCollection()
-        self._shapeLinksCollection: List[ShapesLinkBase] = []           # TODO: Should restrict duplicate link creation (WHAT IS a duplicate link?)
+        # Geometry controller handles shapes behavior logic
+        self._geometryController = GeometryController(self)
 
-        # Checker for collisions
-        self._collisionChecker = CollisionProcessor(self, self._shapesCollection)
+        # Creates rectangles with random colors
         self._customRectFactory = CustomRectRandomColorFactory()
-        self._shapeToDrag: CustomRect = None
-        self._shapeForMove: CustomRect = None
-        self._shapeToLink: CustomRect = None
-
-        # End of properties to move ==========
 
         # Last mouse position to keep it on the shape if it cannot be moved
         self._lastMousePos: QPoint = None
         # Current action being performed - it is used to determine what to do with click
-        self._currentAction: DrawAreaActions = None
+        self._currentAction: DrawAreaActions = DrawAreaActions.NO_ACTION
 
         # Set background color to gray
         # TODO: Configurable background?
@@ -53,11 +49,13 @@ class DrawArea(QtWidgets.QWidget):
         match a0.button():
             # Doubleclick with RMB - delete shape under cursor
             case Qt.MouseButton.RightButton:
-                self.tryDeleteRect(a0.pos())
+                self._geometryController.tryDeleteShapeAtPoint(a0.pos())
+                self.update()
             
             # Doubleclick with LMB - create shape with center under cursor
             case Qt.MouseButton.LeftButton:
-                self.tryCreateRect(a0.pos())
+                self._geometryController.tryCreateShape(a0.pos(), self._customRectFactory)
+                self.update()
         
         return super().mouseDoubleClickEvent(a0)
     
@@ -68,11 +66,15 @@ class DrawArea(QtWidgets.QWidget):
 
         match a0.button():
             case Qt.MouseButton.LeftButton:
+                clickedOnShape = self._geometryController.checkShapeAtPoint(a0.pos())
+
                 match self._currentAction:
-                    # Default action - find shape (or it's absense) under the cursor and mark it as shape for move
-                    case _ :
-                        result = self._shapesCollection.getShapeAtPoint(a0.pos())
-                        self._shapeToDrag = result
+                    # If there were no actions, or user was creating link via MMB - try to switch to shape drag
+                    case DrawAreaActions.NO_ACTION | DrawAreaActions.CREATE_LINK_MMB :
+                        # Switch to drag only if click was on shape, select this shape for dragging
+                        if clickedOnShape:
+                            self._geometryController.trySelectShape(a0.pos())
+                            self._currentAction = DrawAreaActions.SHAPE_SELECTED_FOR_DRAG
 
         return super().mousePressEvent(a0)
 
@@ -86,36 +88,54 @@ class DrawArea(QtWidgets.QWidget):
                 match self._currentAction:
                     # Create rectangle with center at cursor after single click
                     case DrawAreaActions.CREATE_RECT_AT_POINT:
-                        self.tryCreateRect(a0.pos())
-                        self._currentAction = None
-                    # Link creation process - either first or second click
-                    case DrawAreaActions.CREATE_LINK:
-                        self.performShapeLinking(a0.pos())
+                        self._geometryController.tryCreateShape(a0.pos(), self._customRectFactory)
+                        self._currentAction = DrawAreaActions.NO_ACTION
+                        self.update()
+                    # Link creation process - start link creation via LMB
+                    case DrawAreaActions.SELECT_FOR_LINKING_LMB:
+                        if self.__beginLinkCreation(a0.pos()):
+                            self._currentAction = DrawAreaActions.CREATE_LINK_LMB
+                    # Link creation process - end link creation via LMB
+                    case DrawAreaActions.CREATE_LINK_LMB:
+                        if self.__finishLinkCreation(a0.pos()):
+                            self._currentAction = DrawAreaActions.NO_ACTION
+                            self.update()
                     # Delete shape under cursor
                     case DrawAreaActions.DELETE_SHAPE:
-                        self.tryDeleteRect(a0.pos())
+                        self._geometryController.tryDeleteShapeAtPoint(a0.pos())
+                        self._currentAction = DrawAreaActions.NO_ACTION
+                        self.update()
                     # Select shape to move to specific point
+                    # Selection mode remains active until the shape is selected
                     case DrawAreaActions.SELECT_FOR_MOVE:
-                        self._shapeForMove = self._shapesCollection.getShapeAtPoint(a0.pos())
-                        self._currentAction = DrawAreaActions.MOVE_TO_POINT
-                    # Try to move selected shape to selected point
+                        if self._geometryController.trySelectShape(a0.pos()):
+                            self._currentAction = DrawAreaActions.MOVE_TO_POINT
+                    # Try to move selected shape to selected point, unselect shape after attempt
                     case DrawAreaActions.MOVE_TO_POINT:
-                        self.moveShapeToPosition(self._shapeForMove, a0.pos())
-                        self._shapeForMove = None
-                        self._currentAction = None
-                    # End of shape drag process - add moved shape back to collection,
-                    # clear variables
+                        self._geometryController.tryMoveSelectedShape(a0.pos())
+                        self._geometryController.clearSelectedShape()
+                        self._currentAction = DrawAreaActions.NO_ACTION
+                        self.update()
+                    # End of shape drag process
                     case DrawAreaActions.SHAPE_DRAG:
-                        self._shapesCollection.addShape(self._shapeToDrag)
-                        self._shapeToDrag = None
-                        self._currentAction = None
-                    # If no action specified - clear temp variable in case user pressed on some shape
+                        self._currentAction = DrawAreaActions.NO_ACTION
+                        self.update()
+                    # If no action specified - clear actions
                     case _:
-                        self._shapeToDrag = None
+                        self._currentAction = DrawAreaActions.NO_ACTION
 
             # MMB single click is being used to link shapes
             case Qt.MouseButton.MidButton:
-                self.performShapeLinking(a0.pos())
+                match self._currentAction:
+                    # Second MMB click - create link
+                    case DrawAreaActions.CREATE_LINK_MMB:
+                        if self.__finishLinkCreation(a0.pos()):
+                            self._currentAction = DrawAreaActions.NO_ACTION
+                            self.update()
+                    # No actions specified and first MMB click - start link creation via MMB
+                    case DrawAreaActions.NO_ACTION:
+                        if self.__beginLinkCreation(a0.pos()):
+                            self._currentAction = DrawAreaActions.CREATE_LINK_MMB
 
         return super().mouseReleaseEvent(a0)
     
@@ -126,7 +146,7 @@ class DrawArea(QtWidgets.QWidget):
         delta_y = a0.globalPos().y() - self._lastMousePos.y()
 
         # If shape has been moved - update cursor position
-        if self.processDragAction(delta_x, delta_y):
+        if self.__processDragAction(delta_x, delta_y):
             self._lastMousePos = a0.globalPos()
             self.update()
         # If shape met obstacle - keep cursor locked in place with the shape
@@ -143,124 +163,52 @@ class DrawArea(QtWidgets.QWidget):
         # Clear painting area
         qp.eraseRect(0, 0, self.width(), self.height())
 
-        # Draw shapes
-        for rect in self._shapesCollection.nodesList:
-            rect.drawCustomShape(qp)
-
-        # Draw currentrly moving shape separately - it is removed from collection while moving
-        if self._shapeToDrag and self._currentAction == DrawAreaActions.SHAPE_DRAG:
-            self._shapeToDrag.drawCustomShape(qp)
-
-        # Draw links
-        for link in self._shapeLinksCollection:
-            link.drawLink(qp)
+        # Draw current geometry
+        self._geometryController.drawGeomerty(qp)
         
         return super().paintEvent(a0)
     
     # Moving shape via dragging and return operation result
-    def processDragAction(self, delta_x: int, delta_y: int) -> bool:
-        # Do drag only if some shape is selected for dragging
-        if self._shapeToDrag:
-            # Move widget to SHAPE_DRAG mode if it wasn't
-            # Delete shape from all shape collection - old logic used to properly search and rebuild KD-Tree
-            # KD-Tree wasn't implemented, but logic left for future re-use
-            if self._currentAction != DrawAreaActions.SHAPE_DRAG:
-                self._shapesCollection.deleteShape(self._shapeToDrag)
-                self._currentAction = DrawAreaActions.SHAPE_DRAG
+    def __processDragAction(self, delta_x: int, delta_y: int) -> bool:
+        # If shape was selected for drag - start dragging process
+        if self._currentAction == DrawAreaActions.SHAPE_SELECTED_FOR_DRAG:
+            self._currentAction = DrawAreaActions.SHAPE_DRAG
 
-            # Define new center point for shape based on X and Y deltas
-            new_point = QPoint(self._shapeToDrag.centerPoint.x() + delta_x,
-                               self._shapeToDrag.centerPoint.y() + delta_y)
-
-            # Try to move shape and report result
-            return self.tryMoveShape(self._shapeToDrag, new_point)
+        # If dragging is in progress - try update the shape position
+        if self._currentAction == DrawAreaActions.SHAPE_DRAG:
+            return self._geometryController.tryMoveSelectedShapeByDelta(delta_x, delta_y)
         
         # Default is True to avoid cursor blocking
         return True
 
-    # Simple shape move to specified position with widget refresh
-    def moveShapeToPosition(self, shape: CustomShape, newPoint: QPoint) -> None:
-        # Same logic as in processDragAction() for compatibility
-        self._shapesCollection.deleteShape(shape)
-        self.tryMoveShape(shape, newPoint)
-        self._shapesCollection.addShape(shape)
-        self.update()
+    def __beginLinkCreation(self, point: QPoint) -> bool:
+        return self._geometryController.trySelectShape(point)
 
-    # Try to change shape position, rollback if failed, return result
-    def tryMoveShape(self, shape: CustomShape, newPoint: QPoint) -> bool:
-        oldPoint = shape.centerPoint
-
-        shape.setNewCenterPoint(newPoint)
-
-        # If collision check was successful - report success
-        if self._collisionChecker.completeCollisionCheck(shape):
-            return True
-        # Else - rollback changes and report failure
-        else:
-            shape.setNewCenterPoint(oldPoint)
-            return False
-
-    # Try to create shape with center at specified position and report result    
-    def tryCreateRect(self, point: QPoint) -> bool:
-        # Produce new shape via factory
-        new_shape = self._customRectFactory.getNewCustomRect(point)
-
-        # If shape fits in desired position - add it to collection, report result in any case
-        if self._collisionChecker.completeCollisionCheck(new_shape):
-            self._shapesCollection.addShape(new_shape)
-            self.update()
-            return True
-        else:
-            return False
-
-    # Try to delete shape at specific point
-    def tryDeleteRect(self, point: QPoint) -> None:
-        result = self._shapesCollection.getShapeAtPoint(point)
-
-        if result:
-            self._shapesCollection.deleteShape(result)
-            self.update()
-
-    # Links shapes at selected point
-    # TODO: Rework method, it is too inconsistent with the rest of design
-    def performShapeLinking(self, point: QPoint) -> None:
-        # TODO: Refine if sequense
-        shape = self._shapesCollection.getShapeAtPoint(point)
-
-        if shape:
-            if self._shapeToLink:
-                if self._shapeToLink == shape:
-                    self._shapeToLink = None
-                    self._currentAction = None
-                else:
-                    self._shapeLinksCollection.append(ShapesLinkLine(self._shapeToLink, shape))
-                    self._shapeToLink = None
-                    self._currentAction = None
-                    self.update()
-            else:
-                self._shapeToLink = shape
-        else:
-            self._shapeToLink = None
-            self._currentAction = None
+    def __finishLinkCreation(self, point: QPoint) -> bool:
+        return self._geometryController.tryLinkWithSelectedShape(point)
 
     # Slot which starts rectangle creation by single click
     def startRectCreation(self) -> None:
         self._currentAction = DrawAreaActions.CREATE_RECT_AT_POINT
+        self._geometryController.clearSelectedShape()
 
     # Slot which starts link creation by LMB clicks
     def startLinkCreation(self) -> None:
-        self._currentAction = DrawAreaActions.CREATE_LINK
+        self._currentAction = DrawAreaActions.SELECT_FOR_LINKING_LMB
+        self._geometryController.clearSelectedShape()
 
     # Slot which starts rectangle move by pointing the new location
     def startRectMove(self) -> None:
         self._currentAction = DrawAreaActions.SELECT_FOR_MOVE
+        self._geometryController.clearSelectedShape()
 
     # Slot which starts deletion of shape by LMB click
     def deleteShape(self) -> None:
         self._currentAction = DrawAreaActions.DELETE_SHAPE
+        self._geometryController.clearSelectedShape()
 
     # Slot and method which clears the draw area
     def clearArea(self) -> None:
-        self._shapeLinksCollection.clear()
-        self._shapesCollection.clearCollection()
+        self._geometryController.clearGeometry()
+        self._geometryController.clearSelectedShape()
         self.update()

@@ -5,7 +5,7 @@ from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtCore import Qt, QPoint, QRect, QSize
 
 import constants
-from custom_shape import CustomShape
+from custom_shape import CustomShape, CustomShapeBaseFactory
 
 # CustomRect has additional Color property
 class CustomRect(CustomShape):
@@ -96,15 +96,16 @@ class CustomRect(CustomShape):
 
 # Basic factory class
 # For base class default color and size are defined in constants
-class CustomRectBaseFactory():
+class CustomRectBaseFactory(CustomShapeBaseFactory):
     def __init__(self) -> None:
         self._defaultSize: QSize = QSize(constants.RECT_SIZE_X, constants.RECT_SIZE_Y)
         self.__defaultColor: QColor = constants.RECT_DEFAULT_COLOR
+        super().__init__()
 
     def getNewCustomRect(self, centerPoint: QPoint, size: QSize, color: QColor) -> CustomRect:
         return CustomRect(centerPoint, size, color)
     
-    def getNewCustomRect(self, centerPoint: QPoint) -> CustomRect:
+    def getNewCustomShape(self, centerPoint: QPoint) -> CustomRect:
         return CustomRect(centerPoint, self._defaultSize, self.__defaultColor)
     
 # Factory which produces rectangles with random colors
@@ -117,7 +118,7 @@ class CustomRectRandomColorFactory(CustomRectBaseFactory):
                              Qt.GlobalColor.yellow)
         super().__init__()
 
-    # Instead if default color returns random color, still uses default size
-    def getNewCustomRect(self, centerPoint: QPoint) -> CustomRect:
+    # Instead of default color returns random color, still uses default size
+    def getNewCustomShape(self, centerPoint: QPoint) -> CustomRect:
         color = self.__colorTable[randint(0, len(self.__colorTable) - 1)]
         return CustomRect(centerPoint, self._defaultSize, color)
