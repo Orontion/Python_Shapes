@@ -49,9 +49,14 @@ class CustomShape(ABC):
     def getBottomRightBound(self) -> QPoint:
         return self._boundaryRect.bottomRight()
 
-    # This method checks intersection with specified CustomShape
+    # This method checks intersection with boundary of specified CustomShape
     @abstractmethod
-    def checkIntersection(self, shape: "CustomShape") -> bool:
+    def checkIntersectionBoundary(self, shape: "CustomShape") -> bool:
+        pass
+
+    # This method checks intersection between actual shapes borders with specified CustomShape
+    @abstractmethod
+    def checkIntersectionPrecise(self, shape: "CustomShape") -> bool:
         pass
 
     # This method checks if specific point is located on the shape

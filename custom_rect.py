@@ -85,9 +85,13 @@ class CustomRect(CustomShape):
         painter.setBrush(self.color)
         painter.drawRect(self._geometryObject)
 
-    # Intersection check - for now it is simplified to boundary rects intersection check
-    # TODO: Deep intersection check algorithm
-    def checkIntersection(self, shape: CustomShape) -> bool:
+    # Boundary intersection check
+    def checkIntersectionBoundary(self, shape: CustomShape) -> bool:
+        return self._boundaryRect.intersects(shape.boundaryRect)
+    
+    # Precise intersection check
+    # TODO: For now it is simplified to be same as boundary
+    def checkIntersectionPrecise(self, shape: CustomShape) -> bool:
         return self._boundaryRect.intersects(shape.boundaryRect)
 
     # Check if point is located on shape

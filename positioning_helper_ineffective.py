@@ -59,7 +59,7 @@ class CollisionProcessor():
     # Check collisions with other shapes
     def shapeCollisionCheck(self, shape: CustomShape) -> bool:
         for node in self._shapesCollection.nodesList:
-            if node != shape and shape.checkIntersection(node):
+            if node != shape and shape.checkIntersectionBoundary(node):
                 return False
             
         return True
