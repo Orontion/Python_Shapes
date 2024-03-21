@@ -54,6 +54,9 @@ class DrawArea(QtWidgets.QWidget):
             
             # Doubleclick with LMB - create shape with center under cursor
             case Qt.MouseButton.LeftButton:
+                # Doubleclick resets any started actions
+                self.__resetCurrentAction()
+
                 self._geometryController.tryCreateShape(a0.pos(), self._customRectFactory)
                 self.update()
         
@@ -137,6 +140,10 @@ class DrawArea(QtWidgets.QWidget):
                         if self.__beginLinkCreation(a0.pos()):
                             self._currentAction = DrawAreaActions.CREATE_LINK_MMB
 
+            # RMB resets any current action
+            case Qt.MouseButton.RightButton:
+                self.__resetCurrentAction()
+
         return super().mouseReleaseEvent(a0)
     
     # Mouse move
@@ -181,11 +188,18 @@ class DrawArea(QtWidgets.QWidget):
         # Default is True to avoid cursor blocking
         return True
 
+    # Internal method to properly start link creation
     def __beginLinkCreation(self, point: QPoint) -> bool:
         return self._geometryController.trySelectShape(point)
 
+    # Internal method to properly finish link creation
     def __finishLinkCreation(self, point: QPoint) -> bool:
         return self._geometryController.tryLinkWithSelectedShape(point)
+
+    # Internal method to reset current actions
+    def __resetCurrentAction(self) -> None:
+        self._currentAction = DrawAreaActions.NO_ACTION
+        self._geometryController.clearSelectedShape()
 
     # Slot which starts rectangle creation by single click
     def startRectCreation(self) -> None:
