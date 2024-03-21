@@ -8,7 +8,8 @@ from custom_shape import CustomShape
 # Class with custom shapes collection
 # Main goals: store all shapes on a plane, add/modify/delete shapes,
 # effectively search for a shape at certain point
-# effectively search for nearest shape(s) to point/to shape
+# effectively search for nearest shape(s) to point/to shape (not implemented)
+# effectively search for shapes intersections using CustomShape bounding box
 #
 # Uses simple binary search through sorted array of shapes bounding boxes edge points
 # to quickly find intersections between bounding boxes
@@ -48,14 +49,14 @@ class ShapesCollection():
                     indexToInsert -= 1
 
             self._nodeBoundaryPointsList.insert(indexToInsert, (shape.getBottomRightBound(), shape)) 
-            # If collection is empty - add first points
+        # If collection is empty - add first points
         else:
             self._nodeBoundaryPointsList.append((shape.getTopLeftBound(), shape))
             self._nodeBoundaryPointsList.append((shape.getBottomRightBound(), shape))
 
         # Update maximal shape width for optimized search
-        if shape.boundaryRect.width() > self._shapeMaxWidth:
-            self._shapeMaxWidth = shape.boundaryRect.width()
+        if shape.boundingBox.width() > self._shapeMaxWidth:
+            self._shapeMaxWidth = shape.boundingBox.width()
 
     # Returns shape at specific point or None, if shape was not found
     def getShapeAtPoint(self, point: QPoint) -> CustomShape:

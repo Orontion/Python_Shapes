@@ -9,18 +9,18 @@ from PyQt5.QtCore import QPoint, QRect
 # - Boundary rect will be used to calculate collisions for different shapes
 class CustomShape(ABC):
     @abstractmethod
-    def __init__(self, centerPoint: QPoint, boundaryRect: QRect) -> None:
+    def __init__(self, centerPoint: QPoint, boundingBox: QRect) -> None:
         super().__init__()
         self._centerPoint = centerPoint
-        self._boundaryRect = boundaryRect
+        self._boundingBox = boundingBox
         
     @property
     def centerPoint(self) -> QPoint:
         return self._centerPoint
     
     @property
-    def boundaryRect(self) -> QRect:
-        return self._boundaryRect
+    def boundingBox(self) -> QRect:
+        return self._boundingBox
     
     @abstractmethod
     def setNewCenterPoint(self, point: QPoint) -> None:
@@ -38,16 +38,16 @@ class CustomShape(ABC):
 
     # These methods return points defining boundary rect of shape
     def getTopLeftBound(self) -> QPoint:
-        return self._boundaryRect.topLeft()
+        return self._boundingBox.topLeft()
 
     def getTopRightBound(self) -> QPoint:
-        return self._boundaryRect.topRight()
+        return self._boundingBox.topRight()
     
     def getBottomLeftBound(self) -> QPoint:
-        return self._boundaryRect.bottomLeft()
+        return self._boundingBox.bottomLeft()
 
     def getBottomRightBound(self) -> QPoint:
-        return self._boundaryRect.bottomRight()
+        return self._boundingBox.bottomRight()
 
     # This method checks intersection with boundary of specified CustomShape
     @abstractmethod

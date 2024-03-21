@@ -87,12 +87,12 @@ class CustomRect(CustomShape):
 
     # Boundary intersection check
     def checkIntersectionBoundary(self, shape: CustomShape) -> bool:
-        return self._boundaryRect.intersects(shape.boundaryRect)
+        return self._boundingBox.intersects(shape.boundingBox)
     
     # Precise intersection check
     # TODO: For now it is simplified to be same as boundary
     def checkIntersectionPrecise(self, shape: CustomShape) -> bool:
-        return self._boundaryRect.intersects(shape.boundaryRect)
+        return self._boundingBox.intersects(shape.boundingBox)
 
     # Check if point is located on shape
     def isPointOnShape(self, point: QPoint) -> bool:
