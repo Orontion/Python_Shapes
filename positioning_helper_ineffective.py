@@ -16,7 +16,7 @@ class ShapesCollection():
         self._nodesList: List[CustomShape] = []
 
     @property
-    def nodesList(self) -> List[CustomShape]:
+    def shapesList(self) -> List[CustomShape]:
         return self._nodesList
 
     def addShape(self, shape: CustomShape) -> None:
@@ -28,6 +28,15 @@ class ShapesCollection():
                 return node
 
         return None
+    
+    def popShapeAtPoint(self, point: QPoint) -> CustomShape:
+        result = self.getShapeAtPoint(point)
+
+        if result:
+            self.deleteShape(result)
+            return result
+        else:
+            return None
     
     def deleteShape(self, shape: CustomShape) -> None:
         self._nodesList.remove(shape)
@@ -58,7 +67,7 @@ class CollisionProcessor():
     
     # Check collisions with other shapes
     def shapeCollisionCheck(self, shape: CustomShape) -> bool:
-        for node in self._shapesCollection.nodesList:
+        for node in self._shapesCollection.shapesList:
             if node != shape and shape.checkIntersectionBoundary(node):
                 return False
             
