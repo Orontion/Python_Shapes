@@ -36,16 +36,16 @@ class ShapesCollection():
             # Or index 0 could be actual result
             # In insertion case it is critical, so distinguish it by result verification
             if indexToInsert == 1:
-                if self._nodeBoundaryPointsList[indexToInsert][0].x() >= shape.getTopLeftBound().x():
+                if self._nodeBoundaryPointsList[indexToInsert - 1][0].x() >= shape.getTopLeftBound().x():
                     indexToInsert -= 1
 
             self._nodeBoundaryPointsList.insert(indexToInsert, (shape.getTopLeftBound(), shape))
 
             indexToInsert = self.__findClosestBoundaryPointIndex(shape.getBottomRightBound().x()) + 1
 
-            if indexToInsert == 0:
-                if self._nodeBoundaryPointsList[1][0].x() >= shape.getTopLeftBound().x():
-                    indexToInsert += 1
+            if indexToInsert == 1:
+                if self._nodeBoundaryPointsList[indexToInsert - 1][0].x() >= shape.getTopLeftBound().x():
+                    indexToInsert -= 1
 
             self._nodeBoundaryPointsList.insert(indexToInsert, (shape.getBottomRightBound(), shape)) 
             # If collection is empty - add first points
